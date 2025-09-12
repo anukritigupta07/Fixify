@@ -1,38 +1,40 @@
-import React, { useState, useContext } from 'react';
-import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
-import { UserDataContext } from '../context/UserContext';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import React from 'react'
+import { useState,useContext } from 'react';
+import { Link } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { UtilityDataContext } from "../context/UtilityContext";
+import { Mail, Lock, Briefcase, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
-const Userlogin = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
+const   UtilityLogin = () => {
+     const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [message, setMessage] = useState('');
 
-  const navigate = useNavigate();
-  const userContext = useContext(UserDataContext);
-  const setUser = userContext?.setUser ?? (() => {});
+const navigate = useNavigate();
+  const userContext = useContext(UtilityDataContext);
+  const setUtility = userContext?.setUtility ?? (() => {});
 
   const loginHandler = async (e) => {
     e.preventDefault();
     setMessage('');
 
     const userData = { email, password };
-
+      
     setEmail('');
     setPassword('');
-
+      const token = localStorage.getItem('token');
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_BASE_URL}/users/login`,
+        `${import.meta.env.VITE_BASE_URL}/utilities/login`,
         userData
       );
 
       if (response.status === 200) {
         const data = response.data;
-        setUser(data.user);
+        setUtility(data.utility);
         localStorage.setItem('token', data.token);
-        navigate('/portal');
+        navigate('/provider-board');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -44,7 +46,8 @@ const Userlogin = () => {
         setMessage('Login failed. Please check your network connection.');
       }
     }
-  };
+  }
+
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -59,14 +62,14 @@ const Userlogin = () => {
       <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 max-w-md w-full p-8">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg">
-            <User className="h-10 w-10 text-white" />
+          <div className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+            <Briefcase className="h-10 w-10 text-white" />
           </div>
         </div>
 
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-gray-900 mb-2">Welcome Back!</h1>
-          <p className="text-gray-600">Sign in to access your account</p>
+          <h1 className="text-3xl font-black text-gray-900 mb-2">Provider Portal</h1>
+          <p className="text-gray-600">Sign in to manage your services</p>
         </div>
 
         {message && (
@@ -88,7 +91,7 @@ const Userlogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                className="w-full pl-12 pr-4 py-4 bg-white/50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium transition-all duration-300"
+                className="w-full pl-12 pr-4 py-4 bg-white/50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-medium transition-all duration-300"
               />
             </div>
           </div>
@@ -105,7 +108,7 @@ const Userlogin = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full pl-12 pr-12 py-4 bg-white/50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium transition-all duration-300"
+                className="w-full pl-12 pr-12 py-4 bg-white/50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-medium transition-all duration-300"
               />
               <button
                 type="button"
@@ -119,7 +122,7 @@ const Userlogin = () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-indigo-500/25 transition-all duration-300 transform hover:scale-105 flex items-center justify-center group"
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-green-500/25 transition-all duration-300 transform hover:scale-105 flex items-center justify-center group"
           >
             Sign In
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
@@ -127,9 +130,9 @@ const Userlogin = () => {
         </form>
 
         <p className="text-center text-gray-600 mt-6">
-          Don't have an account?{' '}
-          <Link to="/signup" className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors duration-300">
-            Create one
+          New provider?{' '}
+          <Link to="/utility-signup" className="text-green-600 font-semibold hover:text-green-700 transition-colors duration-300">
+            Join us
           </Link>
         </p>
 
@@ -141,15 +144,15 @@ const Userlogin = () => {
         </div>
 
         <Link
-          to="/utility-login"
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
+          to="/login"
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
         >
-          Sign in as Service Provider
+          Sign in as Customer
           <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
         </Link>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Userlogin;
+export default UtilityLogin

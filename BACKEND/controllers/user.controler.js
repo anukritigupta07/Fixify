@@ -9,15 +9,16 @@ module.exports.registerUser = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    console.log(req.body);
-    const { fullname, email, password } = req.body;
+   //  console.log(req.body);
+    const { fullname, email, password, phone } = req.body;
     const hashPassword = await userModel.hashPassword(password);
 
     const user = await userServices.createUser(
        { firstname: fullname.firstname,
          lastname: fullname.lastname,
           email,
-         password: hashPassword
+         password: hashPassword,
+         phone
         } );
    const token =  await user.generateAuthToken();
   // Printing token for debugging purposes. You can remove it before production.  // DO NOT LOG SECRET KEYS IN PRODUCTION!  // You should
@@ -55,9 +56,9 @@ const errors = validationResult(req);
  
 }
 
-module.exports.getUserProfile = async (req, res) => {
- res.status(200).json(req.user);
-}
+module.exports.getUserProfile = async (req, res) => { 
+   res.status(200).json(req.user);
+ }
 module.exports.logoutUser = async (req, res) => {
     res.clearCookie('token');
     const token = req.cookies.token || req.headers.authorization.split(' ')[ 1 ];
