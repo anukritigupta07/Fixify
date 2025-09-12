@@ -31,31 +31,6 @@ io.on("connection", (socket) => {
 
     console.log(`✅ Provider ${providerId} registered with socket ${socket.id}`);
   });
-  const connectedProviders = {}; // providerId → socketId
-
-io.on("connection", (socket) => {
-  // console.log("⚡ Provider connected:", socket.id);
-
-  // registerProvider listener
-  const registerHandler = (providerId) => {
-    console.log(`Provider ${providerId} registered`);
-    socket.providerId = providerId; // store providerId if needed
-  };
-
-  socket.on("registerProvider", registerHandler);
-
-  // Clean up disconnect listener
-  const disconnectHandler = () => {
-    console.log("⚡ Provider disconnected:", socket.id);
-  };
-  socket.on("disconnect", disconnectHandler);
-
-  // OPTIONAL: cleanup if needed
-  socket.once("disconnect", () => {
-    socket.off("registerProvider", registerHandler);
-    socket.off("disconnect", disconnectHandler);
-  });
-});
 
 
 
@@ -97,95 +72,7 @@ io.on("connection", (socket) => {
 });
 
 
-// ------------------- Booking Route -------------------
-app.post("/book-service", async (req, res) => {
-  try {
-    const { userId, category, details } = req.body;
 
-    // 👀 Find provider with same profession
-    const provider = await utilityModel.findOne({
-      profession: category,
-      status: "active",
-    });
-
-    if (!provider) {
-      return res.status(404).json({ message: "No active provider available" });
-    }
-
-    // ✅ Save booking
-    const booking = new bookingModel({
-      userId,
-      providerId: provider._id,
-      category,
-      details,
-      status: "pending",
-    });
-    await booking.save();
-
-    // ✅ Notify provider if online
-    if (connectedProviders[provider._id]) {
-      io.to(connectedProviders[provider._id]).emit("newBooking", booking);
-      console.log("📨 Booking sent to provider:", provider.fullname.firstname);
-    }
-
-    res.status(201).json({ message: "Booking created", booking });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-
-// ------------------- Accept / Reject Booking -------------------
-app.post("/booking/:id/action", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { action } = req.body; // "accept" ya "reject"
-
-    const booking = await bookingModel.findById(id).populate("userId providerId");
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
-
-    if (action === "accept") {
-      booking.status = "accepted";
-    } else if (action === "reject") {
-      booking.status = "rejected";
-    } else {
-      return res.status(400).json({ message: "Invalid action" });
-    }
-
-    await booking.save();
-
-    // ✅ Notify User (if connected)
-    if (connectedUsers[booking.userId._id]) {
-      io.to(connectedUsers[booking.userId._id]).emit("bookingUpdate", {
-        bookingId: booking._id,
-        status: booking.status,
-      });
-      console.log(`📢 User notified: Booking ${booking._id} ${booking.status}`);
-    }
-
-    res.json({ message: `Booking ${booking.status}`, booking });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// ------------------- Get Provider Bookings -------------------
-app.get("/provider/:id/bookings", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const bookings = await bookingModel.find({ providerId: id })
-      .populate("userId", "fullname email")  // optional user details
-      .sort({ createdAt: -1 });
-
-    res.json({ bookings });
-  } catch (err) {
-    console.error("❌ Error fetching provider bookings:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 // ✅ Start server
 const port = process.env.PORT || 4000;
