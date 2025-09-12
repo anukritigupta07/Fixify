@@ -1,0 +1,14 @@
+{
+  "name": "fixify-fullstack",
+  "version": "1.0.0",
+  "description": "FIXIFY - Complete Home Services Platform",
+  "main": "BACKEND/server.js",
+  "scripts": {
+    "build": "cd Frontend && npm install && npm run build",
+    "start": "cd BACKEND && npm install && npm start",
+    "dev": "cd BACKEND && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
