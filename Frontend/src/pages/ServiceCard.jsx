@@ -20,13 +20,17 @@ const ServiceCard = ({ service, userId }) => {
     try {
       const payload = {
         userId,
+        providerId: service.providerId || service.provider?._id || service._id,
         category: service.category,
-        serviceId: service.id,
+        serviceId: service.id || service._id,
         location: bookingData.address,
         details: bookingData.notes || `Booking for ${service.name}`,
         preferredDate: bookingData.date,
         preferredTime: bookingData.time,
       };
+
+      console.log("Booking payload:", payload);
+      console.log("Service object:", service);
 
       await axios.post(
         `${import.meta.env.VITE_BASE_URL}/bookings/booking`,
@@ -37,6 +41,7 @@ const ServiceCard = ({ service, userId }) => {
       setShowBookingModal(false);
     } catch (err) {
       console.error("Booking error:", err);
+      console.error("Error response:", err);
       alert("❌ Booking failed. Check console for details.");
     }
   };

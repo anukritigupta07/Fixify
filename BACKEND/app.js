@@ -2,7 +2,6 @@
  dotenv.config();
  const express  = require('express');
  const cors = require('cors')
- const path = require('path');
 const connecToDb = require('./db/db'); // Make sure C:\FIXIFY\BACKEND\db\db.js exists, or update the path accordingly
 const app = express();
 const cookieParser = require('cookie-parser')
@@ -25,13 +24,5 @@ app.use('/users' , userRoutes)
 app.use('/utilities', utilityRoutes);
 app.use('/maps', mapsRoutes);
 app.use("/bookings", bookingRoutes);
-
-// Serve static files from Frontend dist
-app.use(express.static(path.join(__dirname, '../Frontend/dist')));
-
-// Serve frontend for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
-});
 
 module.exports = app;
