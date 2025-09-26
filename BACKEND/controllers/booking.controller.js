@@ -20,8 +20,8 @@ exports.createBooking = async (req, res) => {
       status: "active",
     });
 
-    console.log(`🔍 Looking for active ${category.toLowerCase()} provider`);
-    console.log(`📊 Found provider:`, provider ? `${provider.fullname.firstname} (${provider.status})` : 'None');
+    console.log(` Looking for active ${category.toLowerCase()} provider`);
+    console.log(`Found provider:`, provider ? `${provider.fullname.firstname} (${provider.status})` : 'None');
 
     if (!provider)
       return res.status(404).json({ message: "No active provider available for this service" });

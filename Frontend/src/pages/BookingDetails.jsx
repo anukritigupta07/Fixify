@@ -31,6 +31,7 @@ const BookingDetails = ({onClose,onError,onConfirm,service}) => {
         try {
             await onConfirm({ service, date, time, address: serviceAddress, notes });
         } catch (error) {
+            console.log(error)
             onError('Failed to book service. Please try again.');
         } finally {
             setIsSubmitting(false);

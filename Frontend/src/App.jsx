@@ -4,17 +4,20 @@ import Userlogin from './pages/Userlogin'
 import Usersignup from './pages/Usersignup'
 import UtilitySignup from './page/UtilitySignup'
 import UtilityLogin from './page/UtilityLogin'
-// import Home from  './pages/Home'
+
 import DashboardContent from './pages/DashboardContent'
-import Start from './pages/Start'
+
 import Portal from './pages/Portal'
 import ServiceInfo from './pages/ServiceInfo'
-import ProtectedRoute from './components/ProtectedRoute'
+
 import BookingDetails from './pages/BookingDetails'
 import ProviderDashboard from './page/ProviderDashboard'
 import LiveCity from './components/LiveCity'
 import ChooseAddress from './components/ChooseAddress'
 import BookService from './components/BookService'
+import AdminLogin from './pages/AdminLogin'
+import AdminDashboard from './pages/AdminDashboard'
+
 const App = () => {
   return (
     <div>
@@ -36,6 +39,9 @@ const App = () => {
             <Route path="/choose-address" element={<ChooseAddress />} />
              <Route path="/book-service" element={<BookService />} />
              <Route path="/choose-address" element={<ChooseAddress />} />
+
+             <Route path="/admin/login" element={<AdminLogin />} />
+             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             
 
 
