@@ -10,6 +10,8 @@ const utilityRoutes = require('./routes/utility.route');
 const mapsRoutes = require('./routes/maps.routes')
 const bookingRoutes = require("./routes/booking.route");
 const adminRoutes = require('./routes/admin.routes');
+const serviceRoutes = require('./routes/service.routes');
+const feedbackRoutes = require('./routes/feedback.routes');
 
 connecToDb();
 
@@ -26,5 +28,7 @@ app.use('/utilities', utilityRoutes);
 app.use('/maps', mapsRoutes);
 app.use("/bookings", bookingRoutes);
 app.use('/admin', adminRoutes);
+app.use('/services', serviceRoutes);
+app.use('/feedback', feedbackRoutes);
 
 module.exports = app;

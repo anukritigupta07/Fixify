@@ -18,7 +18,7 @@ const connectedProviders = {};
 const connectedUsers = {};
 
 io.on("connection", (socket) => {
-  console.log("⚡ New socket connected:", socket.id);
+  // console.log("⚡ New socket connected:", socket.id);
 
   // ✅ Provider register karega
   socket.on("registerProvider", async (providerId) => {
@@ -29,7 +29,7 @@ io.on("connection", (socket) => {
       status: "active",
     });
 
-    console.log(`✅ Provider ${providerId} registered with socket ${socket.id}`);
+    // console.log(`✅ Provider ${providerId} registered with socket ${socket.id}`);
   });
   const connectedProviders = {}; // providerId → socketId
 
@@ -82,7 +82,7 @@ io.on("connection", (socket) => {
         status: "inactive",
         socketId: null,
       });
-      console.log(`❌ Provider ${providerId} disconnected`);
+      // console.log(`❌ Provider ${providerId} disconnected`);
     }
 
     // User disconnect check
@@ -91,7 +91,7 @@ io.on("connection", (socket) => {
     );
     if (userId) {
       delete connectedUsers[userId];
-      console.log(`❌ User ${userId} disconnected`);
+      // console.log(`❌ User ${userId} disconnected`);
     }
   });
 });
@@ -146,9 +146,11 @@ app.post("/booking/:id/action", async (req, res) => {
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
     if (action === "accept") {
-      booking.status = "accepted";
+      booking.status = "confirmed";
     } else if (action === "reject") {
       booking.status = "rejected";
+    } else if (action === "complete") {
+      booking.status = "completed";
     } else {
       return res.status(400).json({ message: "Invalid action" });
     }
@@ -182,7 +184,7 @@ app.get("/provider/:id/bookings", async (req, res) => {
 
     res.json({ bookings });
   } catch (err) {
-    console.error("❌ Error fetching provider bookings:", err);
+    // console.error("❌ Error fetching provider bookings:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

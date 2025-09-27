@@ -12,16 +12,28 @@ const NavLinkContent = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    // Clear all localStorage items
     localStorage.removeItem("token");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("utilityData");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    
+    // Clear context states
     setUser(null);
     setUtility(null);
     setIsMenuOpen(false);
+    
+    // Navigate without refresh
     navigate("/");
   };
 
-  // ✅ Decide who is logged in (priority: provider > user)
-  const isProvider = utility?.email && !user?.email;
-  const isUser = user?.email && !utility?.email;
+  // ✅ Decide who is logged in (check localStorage for current session type)
+  const currentUtilityData = localStorage.getItem('utilityData');
+  const currentUserData = localStorage.getItem('userData');
+  
+  const isProvider = currentUtilityData && utility?.email;
+  const isUser = currentUserData && user?.email && !currentUtilityData;
 
   const WrenchIcon = (props) => (
     <svg {...props} width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -146,6 +146,10 @@ exports.bookingAction = async (req, res) => {
         // No other provider available
         booking.status = "rejected";
       }
+    } else if (action === "complete") {
+      booking.status = "completed";
+    } else if (action === "cancel") {
+      booking.status = "cancelled";
     } else {
       return res.status(400).json({ message: "Invalid action" });
     }

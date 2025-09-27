@@ -37,6 +37,7 @@ const Usersignup = () => {
         const data = response.data;
         setUser(data.user);
         localStorage.setItem('token', data.token);
+        localStorage.setItem('userData', JSON.stringify(data.user));
         navigate('/portal');
       }
     } catch (error) {

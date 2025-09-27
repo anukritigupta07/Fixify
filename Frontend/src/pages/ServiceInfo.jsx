@@ -1,5 +1,6 @@
 // ServiceInfo.jsx
 import React, { useState, useEffect, useContext } from 'react';
+import axios from 'axios';
 import ServiceCard from './ServiceCard';
 import NavLinkContent from './NavLinkContent';
 import { UserDataContext } from '../context/UserContext'; // get logged-in user
@@ -9,19 +10,26 @@ const ServiceInfo = ({ location, profession }) => {
   const { user } = useContext(UserDataContext); // logged-in user
   const loggedInUserId = user?._id || null;
 
-  const mockServices = [
-    { id: 1, name: 'Emergency Plumbing', category: 'plumber', description: '24/7 emergency plumbing services for leaks and bursts.', price: 150, rating: 4.8, location: 'Lucknow', image: 'https://cdn.pixabay.com/photo/2018/03/19/15/04/faucet-3240211_1280.jpg' },
-    { id: 2, name: 'Switchboard Repair', category: 'electrician', description: 'Repair and replacement of faulty switchboards.', price: 120, rating: 4.9, location: 'Lucknow', image: 'https://media.istockphoto.com/id/1906119315/photo/electrician-engineer-tests-electrical-installations-and-wires-on-relay-protection-system.jpg?s=612x612&w=0&k=20&c=-edZvXq52hctr8wL676r30sAUy965lpzaM78jn42qY8=' },
-    { id: 3, name: 'AC Installation', category: 'HVAC', description: 'Professional installation for all types of air conditioners.', price: 250, rating: 4.7, location: 'Kanpur', image: 'https://as2.ftcdn.net/v2/jpg/03/05/25/87/1000_F_305258776_wnt00VidOI3uVag9pS86hBJmGr1szW6m.jpg' },
-    { id: 4, name: 'General Carpentry', category: 'Carpentry', description: 'Custom furniture, repairs, and installations.', price: 100, rating: 4.9, location: 'Lucknow', image: 'https://t4.ftcdn.net/jpg/14/41/56/43/240_F_1441564356_PIfTdnWuKHfxQjmuEKXPuEqHT3Q9Rm6L.jpg' },
-    { id: 5, name: 'Interior Painting', category: 'Painting', description: 'High-quality interior painting for homes and offices.', price: 300, rating: 4.6, location: 'Varanasi', image: 'https://as1.ftcdn.net/v2/jpg/05/93/63/26/1000_F_593632696_54yJb7X4QjHmPOTlWjpw9fblrw5k4V13.jpg' },
-    { id: 6, name: 'Vehicle Mechanic', category: 'Mechanic', description: 'Fast and best service at anytime and everywhere', price: 500, rating: 4.7, location: 'Lucknow', image: 'https://t3.ftcdn.net/jpg/09/66/01/20/240_F_966012078_ARw28Ks61EmU5jSOZbKWXAT1UlVPJnor.jpg' },
-  ];
+  const [services, setServices] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('All');
 
-  const categories = ['All', ...new Set(mockServices.map(s => s.category))];
+  // Fetch services from database
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/services`);
+        setServices(response.data.services || []);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        setServices([]);
+      }
+    };
+    fetchServices();
+  }, []);
+
+  const categories = ['All', ...new Set(services.map(s => s.category))];
 
   // Auto-filter if provider has profession
   useEffect(() => {
@@ -30,7 +38,7 @@ const ServiceInfo = ({ location, profession }) => {
     }
   }, [profession]);
 
-  const filteredServices = mockServices.filter(
+  const filteredServices = services.filter(
     service =>
       service.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
       (category === 'All' || service.category === category)

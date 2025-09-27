@@ -2,13 +2,15 @@ import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { UserDataContext } from "../context/UserContext";
 import NavLinkContent from "./NavLinkContent";
-import { Calendar, Clock, User, MapPin, Phone, Mail, Star, TrendingUp, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Calendar, Clock, User, MapPin, Phone, Mail, Star, TrendingUp, CheckCircle, XCircle, AlertCircle, MessageSquare } from "lucide-react";
 
 export default function UserDashboard() {
   const { user, isLoading: userLoading } = useContext(UserDataContext);
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [toast, setToast] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackData, setFeedbackData] = useState({ bookingId: '', rating: 5, comment: '' });
 
   const userId = user?._id;
 
@@ -32,14 +34,14 @@ export default function UserDashboard() {
     fetchBookings();
   }, [userId]);
 
-  // Cancel a pending booking
+  // Cancel a booking
   const cancelBooking = async (bookingId) => {
     if (!window.confirm('Are you sure you want to cancel this booking?')) return;
     
     try {
-      await axios.put(
-        `http://localhost:4000/bookings/${bookingId}/status`,
-        { status: "cancelled" }
+      await axios.post(
+        `http://localhost:4000/bookings/${bookingId}/action`,
+        { action: "cancel" }
       );
       setBookings((prev) =>
         prev.map((b) => (b._id === bookingId ? { ...b, status: "cancelled" } : b))
@@ -48,6 +50,30 @@ export default function UserDashboard() {
       console.error("❌ Failed to cancel booking:", err);
       alert('Failed to cancel booking. Please try again.');
     }
+  };
+
+  // Submit feedback
+  const submitFeedback = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        'http://localhost:4000/feedback/submit',
+        feedbackData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setShowFeedbackModal(false);
+      setFeedbackData({ bookingId: '', rating: 5, comment: '' });
+      alert('Feedback submitted successfully!');
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+      alert('Failed to submit feedback. Please try again.');
+    }
+  };
+
+  // Open feedback modal
+  const openFeedbackModal = (bookingId) => {
+    setFeedbackData({ bookingId, rating: 5, comment: '' });
+    setShowFeedbackModal(true);
   };
 
   if (userLoading) {
@@ -64,21 +90,14 @@ export default function UserDashboard() {
     );
   }
 
-  // if (!user || !userId) {
-  //   return (
-  //     <div className="flex justify-center items-center h-screen bg-gray-50">
-  //       <p className="text-lg font-semibold text-gray-700">
-  //         Please login to view your dashboard.
-  //       </p>
-  //     </div>
-  //   );
-  // }
+  // No authentication check - let user access dashboard if they have token
 
   // Calculate booking stats
   const stats = {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
     confirmed: bookings.filter(b => b.status === 'confirmed').length,
+    completed: bookings.filter(b => b.status === 'completed').length,
     rejected: bookings.filter(b => b.status === 'rejected').length,
     cancelled: bookings.filter(b => b.status === 'cancelled').length
   };
@@ -87,6 +106,7 @@ export default function UserDashboard() {
     switch(status) {
       case 'pending': return <AlertCircle className="w-4 h-4" />;
       case 'confirmed': return <CheckCircle className="w-4 h-4" />;
+      case 'completed': return <CheckCircle className="w-4 h-4" />;
       case 'rejected': return <XCircle className="w-4 h-4" />;
       case 'cancelled': return <XCircle className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
@@ -128,7 +148,7 @@ export default function UserDashboard() {
               </div>
               
               {/* Quick Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="text-center p-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl border border-gray-300/50">
                   <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
                   <div className="text-sm text-gray-600 font-medium">Total</div>
@@ -140,6 +160,10 @@ export default function UserDashboard() {
                 <div className="text-center p-4 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl border border-green-300/50">
                   <div className="text-2xl font-bold text-green-800">{stats.confirmed}</div>
                   <div className="text-sm text-green-700 font-medium">Confirmed</div>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl border border-blue-300/50">
+                  <div className="text-2xl font-bold text-blue-800">{stats.completed}</div>
+                  <div className="text-sm text-blue-700 font-medium">Completed</div>
                 </div>
                 <div className="text-center p-4 bg-gradient-to-br from-red-100 to-red-200 rounded-2xl border border-red-300/50">
                   <div className="text-2xl font-bold text-red-800">{stats.rejected}</div>
@@ -201,6 +225,8 @@ export default function UserDashboard() {
                         ? "bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700"
                         : b.status === "confirmed"
                         ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700"
+                        : b.status === "completed"
+                        ? "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700"
                         : b.status === "rejected"
                         ? "bg-gradient-to-r from-red-100 to-pink-100 text-red-700"
                         : b.status === "cancelled"
@@ -251,7 +277,7 @@ export default function UserDashboard() {
                   )}
                   
                   {b.status === "confirmed" && (
-                    <div className="mt-6 pt-4 border-t border-gray-300/50">
+                    <div className="mt-6 pt-4 border-t border-gray-300/50 space-y-3">
                       <div className="flex gap-3">
                         <button className="flex-1 bg-gradient-to-r from-gray-600 to-gray-700 text-white py-3 px-4 rounded-2xl hover:shadow-lg font-bold transition-all duration-300 text-sm">
                           View Details
@@ -260,6 +286,13 @@ export default function UserDashboard() {
                           Contact Provider
                         </button>
                       </div>
+                      <button
+                        className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-3 px-4 rounded-2xl hover:shadow-lg font-bold transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
+                        onClick={() => cancelBooking(b._id)}
+                      >
+                        <XCircle className="w-5 h-5 mr-2" />
+                        Cancel Booking
+                      </button>
                     </div>
                   )}
                   
@@ -275,47 +308,78 @@ export default function UserDashboard() {
                       </div>
                     </div>
                   )}
+                  
+                  {b.status === "completed" && (
+                    <div className="mt-6 pt-4 border-t border-gray-300/50">
+                      <button
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-6 rounded-2xl hover:shadow-lg font-bold transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
+                        onClick={() => openFeedbackModal(b._id)}
+                      >
+                        <MessageSquare className="w-5 h-5 mr-2" />
+                        Add Feedback
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="mb-8 bg-white/90 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/50 shadow-2xl">
-          <h3 className="text-2xl font-black text-gray-900 mb-6">Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a href="/serviceInfo" className="bg-gradient-to-br from-gray-800 to-black hover:from-gray-700 hover:to-gray-900 text-white p-6 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg group">
-              <div className="flex flex-col items-center text-center">
-                <Calendar className="w-6 h-6 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h4 className="font-bold mb-1">Book Service</h4>
-                <p className="text-sm opacity-90">Find and book a service</p>
+
+      </div>
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Add Your Feedback</h3>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+              <div className="flex space-x-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setFeedbackData(prev => ({ ...prev, rating: star }))}
+                    className={`text-2xl ${star <= feedbackData.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                  >
+                    ★
+                  </button>
+                ))}
               </div>
-            </a>
-            <a href="/serviceInfo" className="bg-gradient-to-br from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 p-6 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg group border border-gray-300/50">
-              <div className="flex flex-col items-center text-center">
-                <MapPin className="w-6 h-6 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h4 className="font-bold mb-1">Find Nearby</h4>
-                <p className="text-sm opacity-80">Services in your area</p>
-              </div>
-            </a>
-            <button className="bg-gradient-to-br from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white p-6 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg group">
-              <div className="flex flex-col items-center text-center">
-                <Phone className="w-6 h-6 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h4 className="font-bold mb-1">Emergency</h4>
-                <p className="text-sm opacity-90">24/7 emergency services</p>
-              </div>
-            </button>
-            <button className="bg-gradient-to-br from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500 text-gray-800 p-6 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg group border border-gray-400/50">
-              <div className="flex flex-col items-center text-center">
-                <Star className="w-6 h-6 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                <h4 className="font-bold mb-1">Reviews</h4>
-                <p className="text-sm opacity-80">Rate your experience</p>
-              </div>
-            </button>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
+              <textarea
+                value={feedbackData.comment}
+                onChange={(e) => setFeedbackData(prev => ({ ...prev, comment: e.target.value }))}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="4"
+                placeholder="Share your experience..."
+                required
+              />
+            </div>
+            
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitFeedback}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+                disabled={!feedbackData.comment.trim()}
+              >
+                Submit
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

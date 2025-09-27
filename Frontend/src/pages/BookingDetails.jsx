@@ -1,35 +1,21 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { UserDataContext } from '../context/UserContext';
-import { Calendar, Clock, MapPin, User, DollarSign, X, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calendar, Clock, User, DollarSign, X, CheckCircle } from 'lucide-react';
 
 const BookingDetails = ({onClose,onError,onConfirm,service}) => {
-    const { address } = useContext(UserDataContext);
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [serviceAddress, setServiceAddress] = useState('');
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    // Set default address from context
-    useEffect(() => {
-        if (address) {
-            setServiceAddress(address);
-        }
-    }, [address]);
     
     const handleBooking = async () => {
         if (!date || !time) {
             onError('Please select a valid date and time.');
             return;
         }
-        if (!serviceAddress.trim()) {
-            onError('Please provide a service address.');
-            return;
-        }
         
         setIsSubmitting(true);
         try {
-            await onConfirm({ service, date, time, address: serviceAddress, notes });
+            await onConfirm({ service, date, time, notes });
         } catch (error) {
             console.log(error)
             onError('Failed to book service. Please try again.');
@@ -108,25 +94,7 @@ const BookingDetails = ({onClose,onError,onConfirm,service}) => {
                         />
                     </div>
 
-                    {/* Address */}
-                    <div>
-                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                            <MapPin className="h-4 w-4 mr-2 text-indigo-600" />
-                            Service Address
-                        </label>
-                        <textarea 
-                            value={serviceAddress} 
-                            onChange={e => setServiceAddress(e.target.value)} 
-                            rows="2" 
-                            placeholder="Enter your complete address..."
-                            className="w-full p-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium resize-none"
-                        />
-                        {address && (
-                            <p className="text-xs text-gray-500 mt-1">
-                                Current location: {address}
-                            </p>
-                        )}
-                    </div>
+
 
                     {/* Additional Notes */}
                     <div>

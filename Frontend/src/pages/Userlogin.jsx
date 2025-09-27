@@ -30,9 +30,12 @@ const Userlogin = () => {
 
       if (response.status === 200) {
         const data = response.data;
+        // Clear any provider data
+        localStorage.removeItem('utilityData');
         setUser(data.user);
         localStorage.setItem('token', data.token);
-        navigate('/portal');
+        localStorage.setItem('userData', JSON.stringify(data.user));
+        navigate('/dashboard');
       }
     } catch (error) {
       console.error('Login error:', error);

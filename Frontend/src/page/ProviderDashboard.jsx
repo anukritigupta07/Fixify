@@ -26,7 +26,30 @@ export default function ProviderDashboard() {
   const providerId = provider?._id;
 
   // Provider status state
-  const [status, setStatus] = useState(provider?.status || "inactive");
+  const [status, setStatus] = useState("inactive");
+
+  // Fetch provider status
+  useEffect(() => {
+    if (!providerId) return;
+    
+    const fetchProviderStatus = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BASE_URL}/utilities/profile`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        setStatus(response.data.utility.status || "inactive");
+      } catch (err) {
+        console.error("❌ Failed to fetch provider status:", err);
+      }
+    };
+    
+    fetchProviderStatus();
+  }, [providerId]);
 
   // Fetch bookings and setup socket
   useEffect(() => {
@@ -86,7 +109,7 @@ export default function ProviderDashboard() {
 
     try {
       const res = await axios.patch(
-        `http://localhost:4000/utilities/utilities/${providerId}/status`,
+        `http://localhost:4000/utilities/${providerId}/status`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -115,6 +138,7 @@ export default function ProviderDashboard() {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
     confirmed: bookings.filter(b => b.status === 'confirmed').length,
+    completed: bookings.filter(b => b.status === 'completed').length,
     rejected: bookings.filter(b => b.status === 'rejected').length
   };
 
@@ -122,6 +146,7 @@ export default function ProviderDashboard() {
     switch(status) {
       case 'pending': return <AlertCircle className="w-4 h-4" />;
       case 'confirmed': return <CheckCircle className="w-4 h-4" />;
+      case 'completed': return <CheckCircle className="w-4 h-4" />;
       case 'rejected': return <XCircle className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
@@ -186,10 +211,10 @@ export default function ProviderDashboard() {
               </div>
               
               {/* Quick Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="text-center p-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl border border-gray-300/50">
                   <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
-                  <div className="text-sm text-gray-600 font-medium">Total Bookings</div>
+                  <div className="text-sm text-gray-600 font-medium">Total</div>
                 </div>
                 <div className="text-center p-4 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-2xl border border-yellow-300/50">
                   <div className="text-2xl font-bold text-yellow-800">{stats.pending}</div>
@@ -198,6 +223,10 @@ export default function ProviderDashboard() {
                 <div className="text-center p-4 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl border border-green-300/50">
                   <div className="text-2xl font-bold text-green-800">{stats.confirmed}</div>
                   <div className="text-sm text-green-700 font-medium">Confirmed</div>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl border border-blue-300/50">
+                  <div className="text-2xl font-bold text-blue-800">{stats.completed}</div>
+                  <div className="text-sm text-blue-700 font-medium">Completed</div>
                 </div>
                 <div className="text-center p-4 bg-gradient-to-br from-red-100 to-red-200 rounded-2xl border border-red-300/50">
                   <div className="text-2xl font-bold text-red-800">{stats.rejected}</div>
@@ -255,6 +284,8 @@ export default function ProviderDashboard() {
                         ? "bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700"
                         : b.status === "confirmed"
                         ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700"
+                        : b.status === "completed"
+                        ? "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700"
                         : "bg-gradient-to-r from-red-100 to-pink-100 text-red-700"
                     }`}>
                       {getStatusIcon(b.status)}
@@ -318,11 +349,27 @@ export default function ProviderDashboard() {
                   )}
                   
                   {b.status === "confirmed" && (
-                    <div className="mt-6 pt-4 border-t border-gray-300/50">
+                    <div className="mt-6 pt-4 border-t border-gray-300/50 space-y-3">
                       <button className="w-full bg-gradient-to-r from-gray-700 to-gray-800 text-white py-3 px-4 rounded-2xl hover:shadow-lg font-bold transition-all duration-300 flex items-center justify-center">
                         <Phone className="w-5 h-5 mr-2" />
                         Contact Customer
                       </button>
+                      <button
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-2xl hover:shadow-lg font-bold transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
+                        onClick={() => updateBookingStatus(b._id, "complete")}
+                      >
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        Complete Service
+                      </button>
+                    </div>
+                  )}
+                  
+                  {b.status === "completed" && (
+                    <div className="mt-6 pt-4 border-t border-gray-300/50">
+                      <div className="w-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 py-3 px-4 rounded-2xl font-bold flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        Service Completed
+                      </div>
                     </div>
                   )}
                 </div>

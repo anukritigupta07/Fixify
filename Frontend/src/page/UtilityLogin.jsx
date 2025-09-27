@@ -32,8 +32,11 @@ const navigate = useNavigate();
 
       if (response.status === 200) {
         const data = response.data;
+        // Clear any user data
+        localStorage.removeItem('userData');
         setUtility(data.utility);
         localStorage.setItem('token', data.token);
+        localStorage.setItem('utilityData', JSON.stringify(data.utility));
         navigate('/provider-board');
       }
     } catch (error) {
