@@ -1,3 +1,4 @@
+// src/components/LiveCity.jsx
 import React, { useState, useEffect, useContext } from "react";
 import { UserDataContext } from "../context/UserContext";
 
@@ -8,29 +9,55 @@ const LiveCity = () => {
   useEffect(() => {
     if (locationType === "live") {
       setLoading(true);
+
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const { latitude, longitude } = pos.coords;
-          fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-          )
-            .then((res) => res.json())
-            .then((data) => {
-              const area = data.address.suburb || data.address.town || data.address.village || "";
-              const city = data.address.city || data.address.state_district || "";
-              setAddress(`${area}, ${city}`);
-              setLoading(false);
-            })
-            .catch(() => setLoading(false));
+
+          try {
+            // Backend reverse geocode endpoint (proxy)
+            const res = await fetch(
+              `http://localhost:4000/maps/reverse-geocode?lat=${latitude}&lon=${longitude}`
+            );
+            if (!res.ok) throw new Error("Failed to fetch location");
+
+            const data = await res.json();
+            const addressData = data.address || {};
+
+            const place =
+              addressData.suburb ||
+              addressData.neighbourhood ||
+              addressData.village ||
+              addressData.town ||
+              addressData.city ||
+              "";
+            const district =
+              addressData.state_district ||
+              addressData.county ||
+              addressData.state ||
+              "";
+            const formattedAddress = `${place}, ${district}`;
+
+            setAddress(formattedAddress || "Location not found");
+          } catch (err) {
+            console.error("LiveCity reverse-geocode error:", err);
+            setAddress("Failed to fetch location");
+          } finally {
+            setLoading(false);
+          }
         },
-        () => setLoading(false)
+        (err) => {
+          console.error("Geolocation error:", err);
+          setAddress("Location access denied");
+          setLoading(false);
+        }
       );
     }
-  }, [locationType]); // ✅ run only when live is selected
+  }, [locationType]);
 
-  if (loading) return <span>Loading...</span>;
-
+  if (loading) return <span>Detecting location...</span>;
   return <span>{address || "No location"}</span>;
 };
 
 export default LiveCity;
+

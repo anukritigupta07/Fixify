@@ -3,7 +3,13 @@ const { Server } = require("socket.io");
 const app = require("./app");
 const utilityModel = require("./models/utility.model"); // provider schema
 const bookingModel = require("./models/bookings.model"); // booking schema
+const Razorpay = require("razorpay");
 
+// ------------------- Razorpay Setup -------------------
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_API_KEY,
+  key_secret: process.env.RAZORPAY_API_SECRET,
+});
 // ✅ Create HTTP server
 const server = http.createServer(app);
 
@@ -188,6 +194,14 @@ app.get("/provider/:id/bookings", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+
+
+
+
+
+
+
 
 // ✅ Start server
 const port = process.env.PORT || 4000;

@@ -5,8 +5,7 @@ const Provider = require("../models/utility.model");
 const bookingController = require("../controllers/booking.controller");
 
 
-
-router.post("/booking", bookingController.createBooking);
+//router.post("/booking", bookingController.createBooking);
 // Optionally: get all bookings (for dashboard)
 router.get("/getbookings", async (req, res) => {
   try {
@@ -17,6 +16,7 @@ router.get("/getbookings", async (req, res) => {
   }
 });
 router.post("/create", bookingController.createBooking);
+
 router.post("/:id/action", bookingController.bookingAction);
 router.put("/:id/status", bookingController.updateBookingStatus);
 router.get("/provider/:providerId", bookingController.getProviderBookings);

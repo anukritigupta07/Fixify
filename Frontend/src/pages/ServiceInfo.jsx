@@ -1,21 +1,24 @@
-// ServiceInfo.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import ServiceCard from './ServiceCard';
 import NavLinkContent from './NavLinkContent';
-import { UserDataContext } from '../context/UserContext'; // get logged-in user
-import { Search, Filter, MapPin, Grid, List, Star, TrendingUp } from 'lucide-react';
+import BookingModal from '../components/BookingModal';
+import { UserDataContext } from '../context/UserContext';
+import { Search, Filter, MapPin, TrendingUp, CheckCircle, CreditCard, Wallet, X, Clock, Calendar, User } from 'lucide-react';
 
 const ServiceInfo = ({ location, profession }) => {
-  const { user } = useContext(UserDataContext); // logged-in user
+  const { user } = useContext(UserDataContext);
   const loggedInUserId = user?._id || null;
 
   const [services, setServices] = useState([]);
-
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [currentBooking, setCurrentBooking] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('All');
 
-  // Fetch services from database
+  // ✅ Fetch services
   useEffect(() => {
     const fetchServices = async () => {
       try {
@@ -29,157 +32,373 @@ const ServiceInfo = ({ location, profession }) => {
     fetchServices();
   }, []);
 
-  const categories = ['All', ...new Set(services.map(s => s.category))];
+  const categories = ['All', ...new Set(services.map(s => s.category || 'Other'))];
 
-  // Auto-filter if provider has profession
   useEffect(() => {
-    if (profession && categories.includes(profession)) {
-      setCategory(profession);
-    }
+    if (profession && categories.includes(profession)) setCategory(profession);
   }, [profession]);
 
   const filteredServices = services.filter(
     service =>
-      service.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      service.name?.toLowerCase().includes(searchTerm.toLowerCase()) &&
       (category === 'All' || service.category === category)
   );
 
+  // ✅ Booking modal handlers
+  const handleOpenBooking = (service) => {
+    if (!loggedInUserId) {
+      alert('❌ Please login first.');
+      return;
+    }
+    setSelectedService(service);
+    setShowBookingModal(true);
+  };
+
+  const handleCloseBooking = () => {
+    setShowBookingModal(false);
+    setSelectedService(null);
+  };
+
+  // ✅ Confirm Booking
+  const handleConfirmBooking = async (bookingData) => {
+    try {
+      const payload = {
+        userId: loggedInUserId,
+        providerId: selectedService.providerId || selectedService.provider?._id,
+        category: selectedService.category,
+        serviceId: selectedService._id || selectedService.name,
+        location: bookingData.address || 'Customer Location',
+        details: bookingData.notes || `Booking for ${selectedService.name}`,
+        preferredDate: bookingData.date,
+        preferredTime: bookingData.time,
+      };
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/bookings/create`,
+        payload
+      );
+
+      if (response.data?.booking) {
+        alert('✅ Booking created successfully!');
+        setCurrentBooking(response.data.booking);
+        setShowBookingModal(false);
+        // If the bookingData already contained a paymentMethod (BookingModal handled payment selection)
+        // don't auto-open the payment modal here to avoid duplicate payment windows.
+        // Instead show a confirmation card and let the user explicitly choose to Pay Now.
+        if (!bookingData.paymentMethod) {
+          setShowPaymentModal(true);
+        }
+      } else {
+        alert(response.data.message || 'Booking failed.');
+      }
+    } catch (err) {
+      console.error('❌ Booking error:', err);
+      alert('Booking failed! Check console for details.');
+    }
+  };
+
+  // ✅ Cash Payment Handler
+  const handleCashPayment = async () => {
+    alert('💵 Cash payment selected. Booking confirmed!');
+    setShowPaymentModal(false);
+    setCurrentBooking(null);
+  };
+
+  // ✅ Razorpay Payment
+  const handleRazorpayPayment = async () => {
+  if (!selectedService || !currentBooking) {
+    return alert('No booking or service selected.');
+  }
+
+  try {
+    // Resolve providerId from multiple possible shapes returned by backend
+    const providerId =
+      (selectedService.providerId && (selectedService.providerId._id || selectedService.providerId)) ||
+      (selectedService.provider && (selectedService.provider._id || selectedService.provider)) ||
+      null;
+
+    if (!providerId) {
+      console.error('❌ Missing providerId in service object:', selectedService);
+      alert('Provider ID missing for this service. Cannot initiate payment.');
+      return;
+    }
+
+    // Create payment order using resolved providerId
+    const orderRes = await axios.post(`${import.meta.env.VITE_BASE_URL}/payment/order`, {
+      amount: selectedService.price || 500,
+      bookingId: currentBooking._id,
+      providerId,
+      paymentMode: 'razorpay',
+    });
+
+  console.log('🧾 Razorpay Order Response (full):', orderRes.data);
+
+  const orderData = orderRes.data?.order;
+  // prefer key_id returned by backend (guarantees matching key/credentials)
+  const keyId = orderRes.data?.key_id || import.meta.env.VITE_RAZORPAY_API_KEY;
+  if (!orderRes.data?.key_id) console.warn('⚠️ Backend did not return key_id; falling back to VITE_RAZORPAY_API_KEY');
+    if (!orderData?.id) {
+      console.error('Order creation failed:', orderData);
+      return alert('Failed to create payment order.');
+    }
+
+    const options = {
+  key: keyId,
+      amount: orderData.amount,
+      currency: 'INR',
+      name: selectedService.name || 'Service Booking',
+      description: selectedService.description || selectedService.category,
+      order_id: orderData.id,
+      handler: async (response) => {
+        try {
+          const verifyRes = await axios.post(
+            `${import.meta.env.VITE_BASE_URL}/payment/verify`,
+            {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId: currentBooking._id,
+            }
+          );
+
+          if (verifyRes.data.success) {
+            alert('✅ Payment successful!');
+            setShowPaymentModal(false);
+            setCurrentBooking(null);
+          } else {
+            alert('❌ Payment verification failed.');
+          }
+        } catch (err) {
+          console.error('Error verifying payment:', err);
+          alert('Verification error. Check console.');
+        }
+      },
+      theme: { color: '#4f46e5' },
+    };
+
+    const rzp = new window.Razorpay(options);
+    try {
+      rzp.open();
+    } catch (err) {
+      console.error('❌ Razorpay checkout failed to open:', err);
+      // record fallback payment in backend
+      try {
+        await axios.post(`${import.meta.env.VITE_BASE_URL}/payment/fallback`, {
+          bookingId: currentBooking?._id,
+          providerId: selectedService.providerId?._id || selectedService.providerId,
+          amount: selectedService.price || 0,
+          note: 'Checkout UI failed to open',
+        });
+      } catch (e) {
+        console.error('Failed to record fallback payment:', e);
+      }
+      alert('Payment UI failed to open. We recorded the attempt and left booking pending. You can choose Cash on Service or retry.');
+    }
+  } catch (err) {
+    console.error('Error initiating payment:', err);
+    alert('Payment initiation failed. Try again.');
+  }
+};
+
+  const handleBookingError = (msg) => alert(msg);
+
+  // ✅ UI (unchanged)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <div
+      className="min-h-screen relative"
+      style={{
+        background: 'linear-gradient(135deg, #dbeafe 0%, #ffffff 50%, #d1fae5 100%)'
+      }}
+    >
       <NavLinkContent />
-      
-      {/* Background decorative elements */}
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gray-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gray-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full filter blur-3xl opacity-30"
+          style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full filter blur-3xl opacity-30"
+          style={{ background: 'radial-gradient(circle, #10b981 0%, transparent 70%)' }}></div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
         <div className="text-center mb-12">
-          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 p-8 mb-8">
-            <div className="flex items-center justify-center mb-6">
-              <div className="p-3 bg-gradient-to-br from-gray-800 to-black rounded-2xl shadow-lg mr-4">
-                <MapPin className="h-8 w-8 text-white" />
-              </div>
-              <div className="text-left">
-                <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-2">
-                  Available Services
-                </h1>
-                <div className="flex items-center text-gray-600">
-                  <MapPin className="w-5 h-5 mr-2" />
-                  <span className="text-xl font-semibold">{location}</span>
-                </div>
-              </div>
-            </div>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Find and book the best professionals in your area. Quality guaranteed, hassle-free booking.
-            </p>
+          <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-[#0047AB] to-[#10B981] bg-clip-text text-transparent mb-4">
+            Our Services
+          </h1>
+          <p className="text-xl text-gray-600 mb-6 max-w-2xl mx-auto">
+            Professional services at your doorstep
+          </p>
+          <div className="flex items-center justify-center gap-2 text-gray-500">
+            <MapPin className="w-5 h-5" />
+            <span className="font-medium">{location}</span>
           </div>
         </div>
 
-        {/* Enhanced Filter Section */}
-        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 p-6 mb-8">
+        <div className="backdrop-blur-xl rounded-[2rem] p-6 mb-8" style={{
+          background: 'rgba(255, 255, 255, 0.7)',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.12)'
+        }}>
           <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search Input */}
             <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-blue-400" strokeWidth={2.5} />
               </div>
               <input
                 type="text"
-                placeholder="Search services, professionals, or keywords..."
-                className="w-full pl-12 pr-4 py-4 bg-white/80 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent font-medium transition-all duration-300"
+                placeholder="Search services..."
+                className="w-full pl-14 pr-5 py-4 border border-blue-200/50 rounded-2xl"
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
-            {/* Category Filter */}
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Filter className="h-5 w-5 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                <Filter className="h-5 w-5 text-emerald-400" strokeWidth={2.5} />
               </div>
               <select
-                className="pl-12 pr-8 py-4 bg-white/80 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent font-medium transition-all duration-300 appearance-none cursor-pointer"
+                className="pl-14 pr-10 py-4 border border-emerald-200/50 rounded-2xl"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
                 {categories.map(cat => (
-                  <option key={cat} value={cat}>
-                    {cat === 'All' ? 'All Categories' : cat}
-                  </option>
+                  <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
           </div>
-          
-          {/* Results Summary */}
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center text-gray-600">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              <span className="font-medium">
+          <div className="mt-5 flex items-center justify-between">
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+              <span className="font-bold text-blue-900 text-sm">
                 {filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''} found
               </span>
-            </div>
-            
-            {/* Category Pills */}
-            <div className="hidden md:flex items-center space-x-2">
-              {categories.slice(0, 4).map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                    category === cat
-                      ? 'bg-gradient-to-r from-gray-800 to-black text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {cat === 'All' ? 'All' : cat}
-                </button>
-              ))}
             </div>
           </div>
         </div>
 
-        {/* Service Grid */}
         {filteredServices.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {filteredServices.map((service, index) => (
-              <div
-                key={service.id}
-                className="animate-fade-in-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <ServiceCard
-                  service={service}
-                  userId={user?._id} // Pass user ID for booking
-                />
-              </div>
+              <ServiceCard
+                key={service._id || index}
+                service={service}
+                onBookService={() => handleOpenBooking(service)}
+              />
             ))}
           </div>
         ) : (
-          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 p-12 text-center">
-            <div className="max-w-md mx-auto">
-              <div className="p-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center border border-gray-300/50">
-                <Search className="w-12 h-12 text-gray-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">No services found</h3>
-              <p className="text-gray-600 mb-8">
-                We couldn't find any services matching your criteria. Try adjusting your search or category filter.
-              </p>
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setCategory('All');
-                }}
-                className="px-8 py-4 bg-gradient-to-r from-gray-800 to-black text-white font-bold rounded-2xl hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-              >
-                Clear Filters
-              </button>
-            </div>
+          <div className="text-center p-12 bg-white/70 rounded-2xl shadow-md">
+            <Search className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold mb-2 text-gray-800">No services found</h3>
+            <p className="text-gray-600">Try changing filters or search keywords.</p>
           </div>
         )}
       </div>
+
+      {/* ✅ Booking Modal */}
+      {showBookingModal && selectedService && (
+        <BookingModal
+          service={selectedService}
+          userId={loggedInUserId}
+          onClose={handleCloseBooking}
+          onConfirm={handleConfirmBooking}
+          onError={handleBookingError}
+        />
+      )}
+
+     
+     {/* ✅ Booking Confirmation Card (appears after booking is created) */}
+{currentBooking && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/20 backdrop-blur-sm">
+    <div className="w-[380px] bg-white rounded-3xl shadow-2xl overflow-hidden animate-fadeIn">
+      {/* Header */}
+      <div className="p-4 bg-gradient-to-r from-[#0047AB] to-[#10B981] text-white flex items-center gap-3">
+        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+          {selectedService?.image ? (
+            <img
+              src={selectedService.image}
+              alt="service"
+              className="w-10 h-10 rounded-full object-cover"
+            />
+          ) : (
+            <User className="w-6 h-6 text-white" />
+          )}
+        </div>
+        <div className="flex-1">
+          <div className="text-xs uppercase tracking-wide opacity-90">
+            Booking Confirmed
+          </div>
+          <div className="font-bold text-lg leading-tight truncate">
+            {selectedService?.name}
+          </div>
+        </div>
+        <button
+          onClick={() => setCurrentBooking(null)}
+          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition"
+        >
+          <X className="w-4 h-4 text-white" />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-50 p-2 rounded-lg">
+              <Clock className="w-5 h-5 text-[#0047AB]" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-700 font-semibold">
+                {currentBooking?.preferredDate ||
+                  currentBooking?.date ||
+                  "N/A"}
+              </div>
+              <div className="text-xs text-gray-500">
+                {currentBooking?.preferredTime ||
+                  currentBooking?.time ||
+                  "Anytime"}
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-gray-500">Amount</div>
+            <div className="font-bold text-lg text-emerald-600">
+              ₹{selectedService?.price}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 text-sm text-gray-600 line-clamp-3">
+          {currentBooking?.details ||
+            currentBooking?.notes ||
+            "No additional notes"}
+        </div>
+
+        {/* Buttons */}
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={() => handleRazorpayPayment()}
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#0047AB] to-[#10B981] text-white py-3 rounded-2xl font-semibold hover:shadow-lg transition"
+          >
+            <CreditCard className="w-4 h-4" /> Pay Now
+          </button>
+          <button
+            onClick={() => handleCashPayment()}
+            className="flex-1 inline-flex items-center justify-center gap-2 border border-gray-200 py-3 rounded-2xl text-gray-800 font-semibold hover:bg-gray-50 transition"
+          >
+            <Wallet className="w-4 h-4 text-[#0047AB]" /> Cash
+          </button>
+        </div>
+
+        <div className="mt-4 text-xs text-gray-400 text-center">
+          Booking ID:{" "}
+          <span className="text-gray-700">
+            {currentBooking?._id?.slice(-6) || "—"}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };
