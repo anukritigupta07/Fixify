@@ -30,6 +30,3 @@ The goal is simple — make home services seamless, transparent, and quick ⚡
 | **Authentication** | JWT + bcrypt |
 | **Deployment** | Vercel (Frontend) & Render / Railway (Backend) |
 
-
-git clone https://github.com/<your-username>/Fixify.git
-cd Fixify
