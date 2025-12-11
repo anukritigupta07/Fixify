@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "cd Frontend && npm install && npm run build && cd ../BACKEND && npm install",
-    "start": "cd BACKEND && node server-minimal.js",
+    "start": "cd BACKEND && node server.js",
     "dev": "concurrently \"cd Frontend && npm run dev\" \"cd BACKEND && npm start\""
   },
   "dependencies": {
