@@ -1,0 +1,25 @@
+{
+  "name": "fixify",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd Frontend && npm install && npm run build && cd ../BACKEND && npm install",
+    "start": "cd BACKEND && node server-minimal.js",
+    "dev": "concurrently \"cd Frontend && npm run dev\" \"cd BACKEND && npm start\""
+  },
+  "dependencies": {
+    "axios": "^1.12.2",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.4",
+    "nodemailer": "^6.10.1",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
