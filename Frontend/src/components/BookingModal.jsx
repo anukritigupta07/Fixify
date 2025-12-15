@@ -169,6 +169,10 @@ const BookingModal = ({ service, userId, onClose, onConfirm, onError }) => {
           const res = await fetch(
             `/maps/reverse-geocode?lat=${latitude}&lon=${longitude}`
           );
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`Reverse geocode failed: ${res.status} ${text}`);
+          }
           const data = await res.json();
           const addressText = data.display_name || 'Detected Location';
           const currentLocation = {
