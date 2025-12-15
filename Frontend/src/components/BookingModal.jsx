@@ -154,6 +154,8 @@ const BookingModal = ({ service, userId, onClose, onConfirm, onError }) => {
     city: '',
     state: '',
   });
+  // Base backend URL from Vite env. If empty string, same origin is used.
+  const BASE = import.meta.env.VITE_BASE_URL || "";
 
   useEffect(() => {
     // Removed fetchUserAddresses as saved addresses are no longer displayed in this UI
@@ -167,7 +169,7 @@ const BookingModal = ({ service, userId, onClose, onConfirm, onError }) => {
         try {
           const { latitude, longitude } = position.coords;
           const res = await fetch(
-            `/maps/reverse-geocode?lat=${latitude}&lon=${longitude}`
+            `${BASE}/maps/reverse-geocode?lat=${latitude}&lon=${longitude}`
           );
           if (!res.ok) {
             const text = await res.text().catch(() => '');
