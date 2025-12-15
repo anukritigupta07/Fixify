@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 module.exports.getAddressCoordinate = async (address) => {
-    const apiKey = process.env.GOGGLE_MAPS_API;
+    const apiKey = process.env.GOOGLE_MAPS_API || process.env.GOGGLE_MAPS_API;
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
     try {
         const response = await axios.get(url);
@@ -22,7 +22,7 @@ module.exports.getAddressCoordinate = async (address) => {
         if(!origin || !destination){
             throw new Error
         }
-        const apiKey = process.env.GOGGLE_MAPS_API;
+        const apiKey = process.env.GOOGLE_MAPS_API || process.env.GOGGLE_MAPS_API;
         const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&key=${apiKey}`;
         try {
             const response = await axios.get(url);
@@ -44,7 +44,7 @@ module.exports.getAddressCoordinate = async (address) => {
         if(!input){
             throw new Error('Input is required');
         }
-        const apiKey = process.env.GOGGLE_MAPS_API;
+        const apiKey = process.env.GOOGLE_MAPS_API || process.env.GOGGLE_MAPS_API;
         const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey}`;
         try {
             const response = await axios.get(url);

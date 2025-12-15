@@ -21,6 +21,12 @@ app.use(cors())
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Allow popups (Google sign-in) to postMessage back to opener
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  next();
+});
+
 app.get('/' , (req, res) => {
     res.send('Welcome to FIXIFY')
 })

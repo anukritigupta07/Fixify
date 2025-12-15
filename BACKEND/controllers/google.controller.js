@@ -10,11 +10,28 @@ exports.googleAuth = async (req, res) => {
   const { idToken, role } = req.body; // Expecting 'role' from frontend
 
   try {
+    if (process.env.DEBUG_GOOGLE === 'true') {
+      console.log('Received idToken (first 64 chars):', typeof idToken === 'string' ? idToken.slice(0, 64) : idToken);
+    }
     const ticket = await client.verifyIdToken({
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-    const { name, email, picture } = ticket.getPayload();
+    const payload = ticket.getPayload();
+    if (process.env.DEBUG_GOOGLE === 'true') {
+      console.log('Verified token payload:', { aud: payload.aud, iss: payload.iss, sub: payload.sub, email: payload.email });
+    }
+    const { name, email, picture } = payload;
+
+    // Ensure firstname/lastname satisfy schema validation
+    const nameParts = (name || '').trim().split(/\s+/).filter(Boolean);
+    const emailLocal = (email || '').split('@')[0] || 'user';
+    let firstname = nameParts.length ? nameParts[0] : emailLocal;
+    if (typeof firstname !== 'string' || firstname.length < 3) {
+      firstname = (emailLocal || 'user').slice(0, 3).padEnd(3, 'x');
+    }
+    const lastnameCandidate = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
+    const lastname = (lastnameCandidate && lastnameCandidate.length >= 3) ? lastnameCandidate : undefined;
 
     let entity; // Can be a user or a provider
     let Model; // Mongoose model to use
@@ -30,23 +47,20 @@ exports.googleAuth = async (req, res) => {
     if (!entity) {
       // Create new entity if not found
       if (role === 'provider') {
-        entity = new utilityModel({
-          fullname: { firstname: name, lastname: "" },
-          email,
-          profileImage: picture,
-          isGoogleUser: true,
-          // For providers, you might need to add default profession, experience, contact if not provided by Google
-          profession: 'other', // Default profession
-          experience: 0, // Default experience
-          contact: 'N/A', // Default contact
-        });
+          entity = new utilityModel({
+              fullname: lastname ? { firstname, lastname } : { firstname },
+              email,
+              profileImage: picture,
+              isGoogleUser: true,
+              // Do not set `profession` or other enum fields here — utility schema enforces enum only for non-Google users.
+            });
       } else {
         entity = new userModel({
-          fullname: { firstname: name, lastname: "" },
-          email,
-          profileImage: picture,
-          isGoogleUser: true,
-        });
+            fullname: lastname ? { firstname, lastname } : { firstname },
+            email,
+            profileImage: picture,
+            isGoogleUser: true,
+          });
       }
       await entity.save();
     }

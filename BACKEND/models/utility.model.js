@@ -32,7 +32,15 @@ const utilitySchema = new mongoose.Schema({
   profession: {
     type: String,
     required: function() { return !this.isGoogleUser; },
-    enum: ['plumber', 'electrician', 'mechanic', 'technician', 'carpenter', 'painter'],
+    validate: {
+      validator: function (v) {
+        // If this is a Google-created provider, skip enum validation (allow empty or arbitrary until filled by user)
+        if (this.isGoogleUser) return true;
+        const allowed = ['plumber', 'electrician', 'mechanic', 'technician', 'carpenter', 'painter'];
+        return allowed.includes(v);
+      },
+      message: props => `${props.value} is not a valid profession`
+    }
   },
   experience: {
     type: Number,
