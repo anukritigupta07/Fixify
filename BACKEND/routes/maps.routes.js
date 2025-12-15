@@ -51,7 +51,7 @@ router.get("/reverse-geocode", async (req, res) => {
       try {
         const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
         const nomResp = await axios.get(nomUrl, {
-          headers: { "User-Agent": "FixifyApp/1.0 (+https://your-site.example)" }
+          headers: { "User-Agent": process.env.NOMINATIM_USER_AGENT || "FixifyApp/1.0 (+https://your-site.example)" }
         });
         if (nomResp.data) {
           resultData = { provider: "nominatim", raw: nomResp.data };
