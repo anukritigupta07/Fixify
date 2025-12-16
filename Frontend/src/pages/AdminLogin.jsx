@@ -17,12 +17,15 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      const response = await axios.post(`${VITE_BASE_URL}/admin/login`, credentials);
+      console.log('Attempting login to:', `${API_BASE_URL}/admin/login`);
+      const response = await axios.post(`${API_BASE_URL}/admin/login`, credentials);
       localStorage.setItem('adminToken', response.data.token);
       localStorage.setItem('adminUser', JSON.stringify(response.data.admin));
       navigate('/admin/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.error('Login error:', err);
+      console.error('Error response:', err.response);
+      setError(err.response?.data?.message || err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
